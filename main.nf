@@ -61,11 +61,11 @@ def helpMessage() {
 
         --padding_bases_first_guide         Nucleotides used for padding if first sgRNA / shRNA are of
                                             unequal length. Must be one of G, C, T, and A.
-                                            (default: ACC)
+                                            (default: GTT)
 
         --padding_bases_matching_guide      Nucleotides used for padding if matching sgRNA / shRNA are of
                                             unequal length. Must be one of G, C, T, and A.
-                                            (default: GGT)
+                                            (default: ACC)
 
         --forward_read_length               Read length of the forward read, neccessary to determine post guide sequence (default: 65)
 
@@ -114,7 +114,7 @@ log.info " spacer R2 (nt)                   : ${params.spacer_length_R2}"
 log.info " demultiplex mismatches           : ${params.barcode_demux_mismatches}"
 log.info " sample barcode location          : ${params.barcode_demux_location}"
 log.info " first guide padding base         : ${params.padding_bases_first_guide}"
-log.info " matchnig guide padding base      : ${params.padding_bases_matching_guide}"
+log.info " matching guide padding base      : ${params.padding_bases_matching_guide}"
 log.info " reverse complement               : ${params.reverse_complement}"
 log.info " post guide sequnce non-empty     : ${params.post_guide_sequence_nonEmpty}"
 log.info " post guide sequnce empty         : ${params.post_guide_sequence_Empty}"
@@ -276,6 +276,9 @@ process demultiplex {
         exit
     fi
 
+    mv unknown_R1.demux.fastq.gz ${lane}_unknown_R1.demux.fastq.gz
+    mv unknown_R2.demux.fastq.gz ${lane}_unknown_R2.demux.fastq.gz
+
     for file in *_R1.demux.fastq.gz;
     do
       filename="\${file%_R1.demux.fastq.gz}"
@@ -314,9 +317,7 @@ process trim_barcode_and_spacer {
     set val(lane), val(id), file(files) from flattenedSplitFiles
 
     output:
-    set val(lane), val(id), file("${id}.trimmed.tar") into spacerTrimmedFiles
-    file "${id}*_trimmed_beginning*" into emptyStatsUnmerged
-    file "${id}*Empty_trimmed_beginning*" into emptyStatsMerged
+    set val(lane), val(id), file("${id}.trimmed.fastq.gz") into spacerTrimmedFiles
 
     script:
     barcode_spacer_length_R1 = params.spacer_length_R1 + params.barcode_length
@@ -330,89 +331,17 @@ process trim_barcode_and_spacer {
     remove_beginning_R1=\$(expr \${stagger_length} + ${barcode_spacer_length_R1})
     remove_beginning_R2=\$(expr \${stagger_length} + ${barcode_spacer_length_R2})
 
-    post_guide_sequence_nonEmpty="${params.post_guide_sequence_nonEmpty}"
-    post_guide_sequence_Empty="${params.post_guide_sequence_Empty}"
-    post_guide_sequence_Empty_Empty="${params.post_guide_sequence_Empty_Empty}"
-    
-    post_guide_sequence_length_18mer=\$(expr ${params.forward_read_length} - ${params.barcode_random_length} - \${remove_beginning_R1} - 18)
-    post_guide_sequence_length_19mer=\$(expr ${params.forward_read_length} - ${params.barcode_random_length} - \${remove_beginning_R1} - 19)
-    post_guide_sequence_length_20mer=\$(expr ${params.forward_read_length} - ${params.barcode_random_length} - \${remove_beginning_R1} - 20)
-    post_guide_sequence_length_21mer=\$(expr ${params.forward_read_length} - ${params.barcode_random_length} - \${remove_beginning_R1} - 21)
-
-    post_guide_sequence_nonEmpty_18mer="^GNNNNNNNNNNNNNNNNN\${post_guide_sequence_nonEmpty:0:post_guide_sequence_length_18mer}"
-    post_guide_sequence_Empty_18mer="^GNNNNNNNNNNNNNNNNN\${post_guide_sequence_Empty:0:post_guide_sequence_length_18mer}"
-    post_guide_sequence_nonEmpty_19mer="^GNNNNNNNNNNNNNNNNNN\${post_guide_sequence_nonEmpty:0:post_guide_sequence_length_19mer}"
-    post_guide_sequence_Empty_19mer="^GNNNNNNNNNNNNNNNNNN\${post_guide_sequence_Empty:0:post_guide_sequence_length_19mer}"
-    post_guide_sequence_nonEmpty_20mer="^GNNNNNNNNNNNNNNNNNNN\${post_guide_sequence_nonEmpty:0:post_guide_sequence_length_20mer}"
-    post_guide_sequence_Empty_20mer="^GNNNNNNNNNNNNNNNNNNN\${post_guide_sequence_Empty:0:post_guide_sequence_length_20mer}"
-    post_guide_sequence_nonEmpty_21mer="^GNNNNNNNNNNNNNNNNNNNN\${post_guide_sequence_nonEmpty:0:post_guide_sequence_length_21mer}"
-    post_guide_sequence_Empty_21mer="^GNNNNNNNNNNNNNNNNNNNN\${post_guide_sequence_Empty:0:post_guide_sequence_length_21mer}"
-    post_guide_sequence_Empty_Empty="^\${post_guide_sequence_Empty_Empty}"
-
-    err_20mer=1
-    err_21mer=1
-
-    if [[ \${stagger_length} -eq 3 ]]
-    then
-        err_21mer=0
-    fi
-
-    if [[ \${stagger_length} -eq 4 ]]
-    then
-        err_20mer=0
-        err_21mer=0
-    fi
-
     cutadapt ${id}_R1.demux.fastq.gz -j ${task.cpus} -u \${remove_beginning_R1} -o ${id}_R1_trimmed_beginning.fastq.gz
     cutadapt ${id}_R2.demux.fastq.gz -j ${task.cpus} -u \${remove_beginning_R2} -o ${id}_R2_trimmed_beginning.fastq.gz
 
-    cutadapt -j ${task.cpus} --no-indels --action=none \
-        -g "nonEmpty_18mer=\${post_guide_sequence_nonEmpty_18mer};e=1" -g "Empty_18mer=\${post_guide_sequence_Empty_18mer};e=1" \
-        -g "nonEmpty_19mer=\${post_guide_sequence_nonEmpty_19mer};e=1" -g "Empty_19mer=\${post_guide_sequence_Empty_19mer};e=1" \
-        -g "nonEmpty_20mer=\${post_guide_sequence_nonEmpty_20mer};e=\${err_20mer}" -g "Empty_20mer=\${post_guide_sequence_Empty_20mer};e=\${err_20mer}" \
-        -g "nonEmpty_21mer=\${post_guide_sequence_nonEmpty_21mer};e=\${err_21mer}" -g "Empty_21mer=\${post_guide_sequence_Empty_21mer};e=\${err_21mer}" \
-        -g "Empty_Empty=\${post_guide_sequence_Empty_Empty};e=1" \
-        -o "${id}_R1_{name}_trimmed_beginning.fastq.gz" -p "${id}_R2_{name}_trimmed_beginning.fastq.gz" \
-        ${id}_R1_trimmed_beginning.fastq.gz ${id}_R2_trimmed_beginning.fastq.gz
-
-    cat ${id}_R1_nonEmpty_18mer_trimmed_beginning.fastq.gz ${id}_R1_nonEmpty_19mer_trimmed_beginning.fastq.gz ${id}_R1_nonEmpty_20mer_trimmed_beginning.fastq.gz ${id}_R1_nonEmpty_21mer_trimmed_beginning.fastq.gz > ${id}_R1_nonEmpty_trimmed_beginning.fastq.gz
-    cat ${id}_R2_nonEmpty_18mer_trimmed_beginning.fastq.gz ${id}_R2_nonEmpty_19mer_trimmed_beginning.fastq.gz ${id}_R2_nonEmpty_20mer_trimmed_beginning.fastq.gz ${id}_R1_nonEmpty_21mer_trimmed_beginning.fastq.gz > ${id}_R2_nonEmpty_trimmed_beginning.fastq.gz
-
-    cat ${id}_R1_Empty_18mer_trimmed_beginning.fastq.gz ${id}_R1_Empty_19mer_trimmed_beginning.fastq.gz ${id}_R1_Empty_20mer_trimmed_beginning.fastq.gz ${id}_R1_Empty_21mer_trimmed_beginning.fastq.gz > ${id}_R1_Empty_trimmed_beginning.fastq.gz
-    cat ${id}_R2_Empty_18mer_trimmed_beginning.fastq.gz ${id}_R2_Empty_19mer_trimmed_beginning.fastq.gz ${id}_R2_Empty_20mer_trimmed_beginning.fastq.gz ${id}_R1_Empty_21mer_trimmed_beginning.fastq.gz > ${id}_R2_Empty_trimmed_beginning.fastq.gz
-
-    cutadapt ${id}_R1_nonEmpty_trimmed_beginning.fastq.gz -j ${task.cpus} -l ${params.guide_length} -o ${id}_R1.trimmed.fastq.gz
+    cutadapt ${id}_R1_trimmed_beginning.fastq.gz -j ${task.cpus} -l ${params.guide_length} -o ${id}_R1.trimmed.fastq.gz
     rm ${id}_R1_trimmed_beginning.fastq.gz
-
     
-    cutadapt ${id}_R2_nonEmpty_trimmed_beginning.fastq.gz -j ${task.cpus} -l ${params.guide_length} -o ${id}_R2.trimmed.fastq.gz
+    cutadapt ${id}_R2_trimmed_beginning.fastq.gz -j ${task.cpus} -l ${params.guide_length} -o ${id}_R2.trimmed.fastq.gz
     rm ${id}_R2_trimmed_beginning.fastq.gz
 
-    fastqc -t ${task.cpus} -q ${id}*trimmed*.fastq.gz
+    java -ea -Xmx30g -cp /opt/conda/envs/dual-crispr-nf/opt/bbmap-39.01-1/current/ jgi.FuseSequence in1=${id}_R1.trimmed.fastq.gz in2=${id}_R2.trimmed.fastq.gz pad=0 out=${id}.trimmed.fastq.gz fusepairs=t
 
-    tar -c --use-compress-program=pigz -f ${id}.trimmed.tar ${id}_R1.trimmed* ${id}_R2.trimmed*
-    """
-}
-
-process multiqc_read_details {
-
-    tag { 'all' }
-
-    publishDir path: "${params.outputDir}/fastq/",
-               mode: 'copy',
-               overwrite: 'true'
-
-    input:
-    file (emptyStatsUnmerged: 'emptyStatsUnmerged/*') from emptyStatsUnmerged.collect()
-
-    output:
-    file "*multiqc_report.html" into multiqc_report_read_details
-
-    script:
-    """
-    export LC_ALL=C.UTF-8
-    export LANG=C.UTF-8
-    multiqc --interactive -f -x *.run .
     """
 }
 
@@ -455,7 +384,7 @@ process align {
     tag { id }
 
     input:
-    set val(lane), val(id), file(files) from spacerTrimmedFiles
+    set val(lane), val(id), file(fastq) from spacerTrimmedFiles
     each file(index) from bt2Index
 
     output:
@@ -466,24 +395,13 @@ process align {
 
     script:
     """
-    tar -x --use-compress-program=pigz -f ${files}
-
     bowtie2 \
         --threads \$((${task.cpus})) \
         -x ${index}/index \
-        --ignore-quals \
-        -L 21 \
-        -N 1 \
-        --very-sensitive \
-        --score-min L,-36,0 \
-        --np 25 \
-        --rdg 25,25 \
-        --rfg 25,25 \
-        --no-overlap \
-        --no-contain \
-        --fr \
-        -1 ${id}_R1.trimmed.fastq.gz \
-        -2 ${id}_R2.trimmed.fastq.gz 2> ${id}.log > ${id}.sam
+        -L 31 \
+        -N 0 \
+        --seed 42 \
+        <(zcat ${fastq}) 2> ${id}.log > ${id}.sam
 
     samtools stats ${id}.sam > ${id}.sam.stats
     samtools flagstats ${id}.sam > ${id}.sam.flagstat
@@ -517,10 +435,6 @@ process count {
     featureCounts \
         -T ${task.cpus} \
         -a ${saf} \
-        -p \
-        --countReadPairs \
-        -B \
-        -C \
         -F SAF \
         -o ${lane}.txt \
         ${sams}
@@ -585,7 +499,6 @@ process multiqc {
 
     input:
     file (fastqc_demux: 'fastqc_demux/*') from fastqcResults.collect()
-    file (fastqc_emptyStatsMerged: 'fastqc_emptyStatsMerged/*') from emptyStatsMerged.collect()
     file (align: 'align/*') from alignResults.collect()
     file (alignStats: 'align/*') from alignStats.collect()
     file (alignFlagstats: 'align/*') from alignFlagstats.collect()

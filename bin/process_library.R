@@ -38,7 +38,7 @@ sequence_first_guide <- paste0(raw$sequence, padding_bases_first_guide) %>%
 sequence_matching_guide <- paste0(padding_bases_matching_guide, raw$sequence_matching) %>%
   stringr::str_sub(start= -21)
 
-sequence <- paste0(sequence_first_guide, "N", sequence_matching_guide)
+sequence <- paste0(sequence_first_guide, sequence_matching_guide)
 id <- raw$id %>% make.unique()
 
 ### check for id and sequence duplication
@@ -53,7 +53,7 @@ sequence %>%
   # stringr::str_pad(pad = padding_base, width = seq_length, side = "left") %>%
   purrr::set_names(id) %>%
   Biostrings::DNAStringSet() %>%
-  Biostrings::writeXStringSet(paste0(library_name, ".fasta"), format = "fasta")
+  Biostrings::writeXStringSet(paste0(library_name, ".fasta"), format = "fasta", width=200)
 
 ### generate SAF annotation file for featureCount (subread package)
 tibble::tibble(GeneID = id,
