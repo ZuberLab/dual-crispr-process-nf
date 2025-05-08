@@ -59,6 +59,8 @@ def helpMessage() {
                                             barcodes and sgRNA sequence. 
                                             (default: CTTGCTATGCACTCTTGTGCTTAGCTCTGAAAC)
 
+        --spacer_error_rate                 Error rate for spacer sequence. (default: 0.4)
+
         --guide_length                      Number of nucleotides in guide sequence. (default: 21)
 
         --padding_bases_first_guide         Nucleotides used for padding if first sgRNA are of
@@ -68,6 +70,11 @@ def helpMessage() {
         --padding_bases_matching_guide      Nucleotides used for padding if matching sgRNA are of
                                             unequal length. Must be one of G, C, T, and A.
                                             (default: ACC)
+
+        --read_length                       Length of reads. (default: 150)
+
+        --random_barcode_length             Length of random barcode. (default: 4)
+
      Profiles:
         standard                    local execution
         apptainer                   local execution with apptainer
@@ -101,11 +108,14 @@ log.info " barcode file                     : ${params.barcodes}"
 log.info " barcode length                   : ${params.barcode_length}"
 log.info " spacer seq R1 (nt)               : ${params.spacer_seq_R1}"
 log.info " spacer seq R2 (nt)               : ${params.spacer_seq_R2}"
+log.info " spacer error rate                : ${params.spacer_error_rate}"
 log.info " demultiplex mismatches           : ${params.barcode_demux_mismatches}"
 log.info " demultiplex unknown              : ${params.demux_unknown}"
 log.info " sample barcode location          : ${params.barcode_demux_location}"
 log.info " first guide padding base         : ${params.padding_bases_first_guide}"
 log.info " matching guide padding base      : ${params.padding_bases_matching_guide}"
+log.info " read length                      : ${params.read_length}"
+log.info " random barcode length            : ${params.random_barcode_length}"
 log.info " =================================="
 log.info ""
 
