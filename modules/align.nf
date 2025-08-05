@@ -29,6 +29,8 @@ process ALIGN {
         -1 ${R1} \
         -2 ${R2} 2> ${id}.log > ${id}.sam
 
+
+    # Generate statistics for the aligned SAM file
     samtools stats ${id}.sam > ${id}.sam.stats
     samtools flagstats ${id}.sam > ${id}.sam.flagstat
 

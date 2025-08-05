@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-PROFILE=${1:-apptainer}
-echo "Using profile ${PROFILE}."
-
 nextflow run main.nf \
-    -profile ${PROFILE} \
+    -profile test \
     --library test_data/library.txt \
     --barcodes test_data/barcodes.txt \
     --inputDir test_data/01_raw \
