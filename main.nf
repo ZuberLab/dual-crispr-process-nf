@@ -34,7 +34,7 @@ def helpMessage() {
                                             (default: 'barcodes.fasta')
                                             The following columns are required:
                                                 - lane:         name of BAM / FASTQ input file
-                                                - sample_name:  name of demultiplexed sample 
+                                                - sample_name:  name of demultiplexed sample
                                                 - barcode_R1:   nucleotide sequence of the sample barcode on R1
                                                 - barcode_R2:   nucleotide sequence of the sample barcode on R2
 
@@ -42,7 +42,7 @@ def helpMessage() {
         --barcode_demux_mismatches          Number of mismatches allowed during demultiplexing
                                             of barcode. (default: 0)
 
-        --demux_unknown                     Perform demultiplexing of unknown reads with all possible 
+        --demux_unknown                     Perform demultiplexing of unknown reads with all possible
                                             barcode combinations. (default: false)
 
         --barcode_demux_location            Read location of the sample barcode. Only the specified read is used for demultiplexing.
@@ -52,14 +52,16 @@ def helpMessage() {
                                             (default: 4)
 
         --spacer_seq_R1                     Nucleotide sequence of spacer on R1 between
-                                            barcodes and sgRNA sequence. 
+                                            barcodes and sgRNA sequence.
                                             (default: ATATCCCTTGGAGAAAAGCCTTGTTT)
 
         --spacer_seq_R2                     Nucleotide sequence of spacer on R2 between
-                                            barcodes and sgRNA sequence. 
+                                            barcodes and sgRNA sequence.
                                             (default: CTTGCTATGCACTCTTGTGCTTAGCTCTGAAAC)
 
         --spacer_error_rate                 Error rate for spacer sequence. (default: 0.3)
+
+        --max_align_penalty_score           Maximum alignment penalty score to accept read alignment (default: -42)
 
         --guide_length                      Number of nucleotides in guide sequence. (default: 21)
 
@@ -80,12 +82,12 @@ def helpMessage() {
 
 
      Docker:
-     zuberlab/dual-crispr-nf:1.0
+     zuberlab/dual-crispr-nf:1.1
 
      Author:
      Florian Andersch (florian.andersch@imp.ac.at)
-     
-     
+
+
     """.stripIndent()
 }
 
@@ -107,6 +109,7 @@ log.info " barcode length                                   : ${params.barcode_l
 log.info " spacer seq R1 (nt)                               : ${params.spacer_seq_R1}"
 log.info " spacer seq R2 (nt)                               : ${params.spacer_seq_R2}"
 log.info " spacer error rate                                : ${params.spacer_error_rate}"
+log.info " maximum alignment penalty score                  : ${params.max_align_penalty_score}"
 log.info " mismatch allowance for demultiplexing            : ${params.barcode_demux_mismatches}"
 log.info " demultiplex unknown                              : ${params.demux_unknown}"
 log.info " sample barcode location                          : ${params.barcode_demux_location}"
@@ -164,13 +167,13 @@ workflow {
     // Combine processed barcodes with trimmed random barcodes
     ch_trimmed_random_barcodes = ch_processed_barcodes
         .flatten()
-        .map { barcode -> 
+        .map { barcode ->
             def lane = barcode.name.toString().replaceAll(/_R[12]\.fasta$/, '')
             [lane, barcode]
         }
         .groupTuple()
         .join(ch_trimmed_random)
-    
+
     // Demultiplex
     ch_demuxed = DEMULTIPLEX(ch_trimmed_random_barcodes)
 
@@ -213,7 +216,7 @@ workflow {
     // Combine trimmed spacer files and bowtie index
     ch_trimmed_spacer_combined = ch_trimmed_spacer
         .combine(ch_bt2_index)
-    
+
     // Align
     ch_aligned = ALIGN(ch_trimmed_spacer_combined)
 

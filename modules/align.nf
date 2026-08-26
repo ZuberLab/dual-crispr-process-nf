@@ -21,7 +21,7 @@ process ALIGN {
         --ignore-quals \
         -L 12 \
         -N 1 \
-        --score-min L,-42,0 \
+        --score-min L,${params.max_align_penalty_score},0 \
         --no-overlap \
         --no-contain \
         -I 43 -X 43 \
