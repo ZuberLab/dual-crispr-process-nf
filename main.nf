@@ -159,7 +159,9 @@ workflow {
     ch_all_fastq = ch_fastq_from_bam.mix(ch_input_fastq)
 
     // Trim random barcode
-    ch_trimmed_random = TRIM_RANDOM_BARCODE(ch_all_fastq)
+    ch_trim_result = TRIM_RANDOM_BARCODE(ch_all_fastq)
+    ch_trimmed_random = ch_trim_result.trimmed
+    ch_untrimmed_random = ch_trim_result.untrimmed
 
     // Process barcodes
     ch_processed_barcodes = PROCESS_BARCODES(ch_barcodes)
@@ -235,6 +237,8 @@ workflow {
     // collect all fastq files
     ch_fastq_files = ch_all_fastq
         .mix(ch_demuxed_flattened.map { lane, baseName, file -> tuple(baseName, file) })
+        .mix(ch_trimmed_random.map { lane, files -> tuple("${lane}#trimmed", files) })
+        .mix(ch_untrimmed_random.map { lane, files -> tuple("${lane}#untrimmed", files) })
 
     // FastQC
     ch_fastqc = FASTQC(ch_fastq_files)

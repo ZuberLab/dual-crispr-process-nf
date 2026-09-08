@@ -9,6 +9,9 @@ process FASTQC {
 
     script:
     """
-    fastqc -t ${task.cpus} -q *.fastq.gz
+    for f in ${fastq_files}; do
+        ln -s "\$f" "${id}__\$(basename \$f)"
+    done
+    fastqc -t ${task.cpus} -q ${id}__*.fastq.gz
     """
 }
